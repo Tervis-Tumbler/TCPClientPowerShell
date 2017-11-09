@@ -1,4 +1,40 @@
-﻿function New-TCPClient {
+﻿function New-TCPListener {
+    param (
+        [Parameter(Mandatory)]
+        [ValidateRange(1, 65535)]
+        [Int16]
+        $Port        
+    )
+    $IPEndpoint = New-Object System.Net.IPEndPoint ([system.net.ipaddress]::any, $Port)
+    New-Object System.Net.Sockets.TcpListener $IPEndpoint
+}
+
+function Start-TCPListener {
+    param (
+        [Parameter(Mandatory,ValueFromPipeline)]$TCPListener
+    )
+    process {
+        $TCPListener.Start()
+    }
+}
+
+function Read-TCPListener {
+    param (
+        [Parameter(Mandatory,ValueFromPipeline)]$TCPListener
+    )
+    process {
+        While ($true){
+            if ($TCPListener.Pending()) {
+                $Client = $TCPListener.AcceptTcpClient()
+                $Client | New-TCPClientStream | Read-TCPStream -Client $Client
+            } else {
+                Start-Sleep -Seconds 1
+            }
+        }
+    }
+}
+
+function New-TCPClient {
     New-Object -TypeName System.Net.Sockets.TcpClient
 }
 
@@ -100,7 +136,7 @@ function Test-Zebra {
     $Client = New-TCPClient
 
     $Stream = $Client | 
-    Connect-TCPClient -ComputerName GradMickey -Port 9100 -Passthru | 
+    Connect-TCPClient -ComputerName BlackBear -Port 9100 -Passthru | 
     New-TCPClientStream
 
     "^XA^HH^XZ" | Write-TCPStream -Client $Client -Stream $Stream
